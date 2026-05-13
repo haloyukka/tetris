@@ -2,359 +2,93 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>テトリス</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #1a1a2e;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      font-family: 'Courier New', monospace;
-      color: #eee;
-    }
-    #game-container {
-      display: flex;
-      gap: 24px;
-      align-items: flex-start;
-    }
-    canvas {
-      border: 2px solid #4a4a8a;
-      background: #0d0d1a;
-      display: block;
-    }
-    #side-panel {
-      width: 140px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .panel-box {
-      border: 2px solid #4a4a8a;
-      background: #0d0d1a;
-      padding: 12px;
-    }
-    .panel-box h3 {
-      font-size: 12px;
-      color: #8888cc;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 8px;
-    }
-    .panel-box .value {
-      font-size: 22px;
-      color: #fff;
-      font-weight: bold;
-    }
-    #next-canvas {
-      display: block;
-      border: none;
-    }
-    #status {
-      font-size: 13px;
-      color: #aaa;
-      line-height: 1.6;
-    }
-    #overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-    }
-    #overlay h2 { font-size: 36px; color: #fff; }
-    #overlay p { color: #aaa; font-size: 14px; }
-    button {
-      padding: 10px 28px;
-      background: #4a4a8a;
-      color: #fff;
-      border: none;
-      font-size: 16px;
-      cursor: pointer;
-      font-family: inherit;
-      letter-spacing: 1px;
-    }
-    button:hover { background: #6666cc; }
-  </style>
+  <title>Custom Tetris</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div id="game-container">
-  <canvas id="board" width="300" height="600"></canvas>
-  <div id="side-panel">
-    <div class="panel-box">
-      <h3>スコア</h3>
-      <div class="value" id="score">0</div>
+
+<div id="game-wrap">
+  <!-- Left panel -->
+  <div class="panel">
+    <div class="box">
+      <h3>HOLD</h3>
+      <canvas class="mini-cv" id="hold-cv" width="96" height="72"></canvas>
     </div>
-    <div class="panel-box">
-      <h3>レベル</h3>
-      <div class="value" id="level">1</div>
-    </div>
-    <div class="panel-box">
-      <h3>ライン</h3>
-      <div class="value" id="lines">0</div>
-    </div>
-    <div class="panel-box">
-      <h3>NEXT</h3>
-      <canvas id="next-canvas" width="120" height="80"></canvas>
-    </div>
-    <div class="panel-box">
-      <div id="status">
+    <div class="box">
+      <div id="controls-info">
         ← → 移動<br>
         ↑ 回転<br>
         ↓ ソフトドロップ<br>
         Space ハードドロップ<br>
+        C / Shift ホールド<br>
         P 一時停止
       </div>
     </div>
   </div>
+
+  <!-- Board -->
+  <canvas id="board" width="300" height="600"></canvas>
+
+  <!-- Right panel -->
+  <div class="panel">
+    <div class="box">
+      <h3>NEXT</h3>
+      <canvas class="mini-cv" id="next-cv" width="96" height="72"></canvas>
+    </div>
+    <div class="box"><h3>スコア</h3><div class="val" id="score">0</div></div>
+    <div class="box"><h3>最高</h3><div class="val" id="hiscore">0</div></div>
+    <div class="box"><h3>レベル</h3><div class="val" id="level">1</div></div>
+    <div class="box"><h3>ライン</h3><div class="val" id="lines">0</div></div>
+    <button class="btn" id="pause-btn">PAUSE</button>
+    <button class="btn" id="settings-btn">設定</button>
+  </div>
 </div>
 
+<!-- Title / Game Over overlay -->
 <div id="overlay">
-  <h2>テトリス</h2>
+  <h2>Custom Tetris</h2>
   <p>スペースキーまたはボタンでスタート</p>
-  <button id="start-btn">スタート</button>
+  <button class="btn" id="start-btn">スタート</button>
 </div>
 
-<script>
-const COLS = 10, ROWS = 20, CELL = 30;
-const COLORS = [
-  null,
-  '#00f0f0', // I
-  '#0000f0', // J
-  '#f0a000', // L
-  '#f0f000', // O
-  '#00f000', // S
-  '#a000f0', // T
-  '#f00000', // Z
-];
+<!-- Settings modal -->
+<div id="settings-modal">
+  <div id="settings-box">
+    <h2>設定</h2>
 
-const PIECES = [
-  null,
-  [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], // I
-  [[1,0,0],[1,1,1],[0,0,0]],                  // J
-  [[0,0,1],[1,1,1],[0,0,0]],                  // L
-  [[1,1],[1,1]],                              // O
-  [[0,1,1],[1,1,0],[0,0,0]],                  // S
-  [[0,1,0],[1,1,1],[0,0,0]],                  // T
-  [[1,1,0],[0,1,1],[0,0,0]],                  // Z
-];
+    <div class="s-section">
+      <label>テーマ</label>
+      <div class="theme-btns" id="theme-btns"></div>
+    </div>
 
-const canvas = document.getElementById('board');
-const ctx = canvas.getContext('2d');
-const nextCanvas = document.getElementById('next-canvas');
-const nextCtx = nextCanvas.getContext('2d');
+    <div class="s-section">
+      <label>ブロック画像</label>
+      <div class="file-row">
+        <label class="file-label" for="block-upload">画像を選択</label>
+        <input type="file" id="block-upload" accept="image/png,image/jpeg">
+        <button class="reset-btn" id="reset-block">リセット</button>
+      </div>
+      <img class="prev-img" id="block-prev" alt="">
+    </div>
 
-let board, piece, nextPiece, score, level, lines, gameOver, paused, animId, dropTimer, dropInterval;
+    <div class="s-section">
+      <label>背景画像</label>
+      <div class="file-row">
+        <label class="file-label" for="bg-upload">画像を選択</label>
+        <input type="file" id="bg-upload" accept="image/png,image/jpeg">
+        <button class="reset-btn" id="reset-bg">リセット</button>
+      </div>
+      <img class="prev-img" id="bg-prev" alt="">
+    </div>
 
-function newBoard() {
-  return Array.from({length: ROWS}, () => new Array(COLS).fill(0));
-}
+    <button class="btn" id="close-settings">閉じる</button>
+  </div>
+</div>
 
-function randomPiece() {
-  const type = Math.floor(Math.random() * 7) + 1;
-  const matrix = PIECES[type].map(row => [...row]);
-  return { type, matrix, x: Math.floor(COLS / 2) - Math.ceil(matrix[0].length / 2), y: 0 };
-}
-
-function rotate(matrix) {
-  const n = matrix.length;
-  return matrix[0].map((_, i) => matrix.map(row => row[i]).reverse());
-}
-
-function valid(p, dx = 0, dy = 0, mat = p.matrix) {
-  return mat.every((row, r) =>
-    row.every((val, c) => {
-      if (!val) return true;
-      const nx = p.x + c + dx, ny = p.y + r + dy;
-      return nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS && !board[ny][nx];
-    })
-  );
-}
-
-function place() {
-  piece.matrix.forEach((row, r) =>
-    row.forEach((val, c) => {
-      if (val) board[piece.y + r][piece.x + c] = piece.type;
-    })
-  );
-  clearLines();
-  piece = nextPiece;
-  nextPiece = randomPiece();
-  if (!valid(piece)) {
-    gameOver = true;
-    showOverlay('ゲームオーバー');
-  }
-}
-
-function clearLines() {
-  let cleared = 0;
-  for (let r = ROWS - 1; r >= 0; r--) {
-    if (board[r].every(v => v)) {
-      board.splice(r, 1);
-      board.unshift(new Array(COLS).fill(0));
-      cleared++;
-      r++;
-    }
-  }
-  if (cleared) {
-    const pts = [0, 100, 300, 500, 800];
-    score += (pts[cleared] || 800) * level;
-    lines += cleared;
-    level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
-    updateUI();
-  }
-}
-
-function ghostY() {
-  let dy = 0;
-  while (valid(piece, 0, dy + 1)) dy++;
-  return piece.y + dy;
-}
-
-function drawCell(c, r, color, context = ctx, size = CELL) {
-  context.fillStyle = color;
-  context.fillRect(c * size + 1, r * size + 1, size - 2, size - 2);
-  context.fillStyle = 'rgba(255,255,255,0.15)';
-  context.fillRect(c * size + 1, r * size + 1, size - 2, 4);
-  context.fillStyle = 'rgba(0,0,0,0.2)';
-  context.fillRect(c * size + 1, (r + 1) * size - 5, size - 2, 4);
-}
-
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // grid
-  ctx.strokeStyle = '#1a1a3a';
-  ctx.lineWidth = 0.5;
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    ctx.strokeRect(c * CELL, r * CELL, CELL, CELL);
-  }
-
-  // board
-  board.forEach((row, r) =>
-    row.forEach((val, c) => { if (val) drawCell(c, r, COLORS[val]); })
-  );
-
-  // ghost
-  if (piece) {
-    const gy = ghostY();
-    piece.matrix.forEach((row, r) =>
-      row.forEach((val, c) => {
-        if (val) {
-          ctx.fillStyle = 'rgba(255,255,255,0.1)';
-          ctx.fillRect((piece.x + c) * CELL + 1, (gy + r) * CELL + 1, CELL - 2, CELL - 2);
-        }
-      })
-    );
-
-    // active piece
-    piece.matrix.forEach((row, r) =>
-      row.forEach((val, c) => { if (val) drawCell(piece.x + c, piece.y + r, COLORS[piece.type]); })
-    );
-  }
-
-  // next
-  nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-  if (nextPiece) {
-    const ns = 24;
-    const offsetX = Math.floor((nextCanvas.width - nextPiece.matrix[0].length * ns) / 2);
-    const offsetY = Math.floor((nextCanvas.height - nextPiece.matrix.length * ns) / 2);
-    nextPiece.matrix.forEach((row, r) =>
-      row.forEach((val, c) => {
-        if (val) {
-          nextCtx.fillStyle = COLORS[nextPiece.type];
-          nextCtx.fillRect(offsetX + c * ns + 1, offsetY + r * ns + 1, ns - 2, ns - 2);
-        }
-      })
-    );
-  }
-}
-
-function updateUI() {
-  document.getElementById('score').textContent = score;
-  document.getElementById('level').textContent = level;
-  document.getElementById('lines').textContent = lines;
-}
-
-let lastTime = 0;
-function loop(ts) {
-  if (!gameOver && !paused) {
-    if (ts - lastTime > dropInterval) {
-      if (valid(piece, 0, 1)) piece.y++;
-      else place();
-      lastTime = ts;
-    }
-    draw();
-  }
-  if (!gameOver) animId = requestAnimationFrame(loop);
-}
-
-function startGame() {
-  board = newBoard();
-  piece = randomPiece();
-  nextPiece = randomPiece();
-  score = 0; level = 1; lines = 0;
-  dropInterval = 1000;
-  gameOver = false; paused = false;
-  updateUI();
-  document.getElementById('overlay').style.display = 'none';
-  cancelAnimationFrame(animId);
-  lastTime = 0;
-  animId = requestAnimationFrame(loop);
-}
-
-function showOverlay(title) {
-  cancelAnimationFrame(animId);
-  const ol = document.getElementById('overlay');
-  ol.innerHTML = `<h2>${title}</h2><p>最終スコア: ${score}</p><button id="start-btn">もう一度</button>`;
-  ol.style.display = 'flex';
-  document.getElementById('start-btn').onclick = startGame;
-}
-
-document.addEventListener('keydown', e => {
-  if (gameOver) return;
-  if (e.code === 'KeyP') { paused = !paused; return; }
-  if (paused) return;
-  switch (e.code) {
-    case 'ArrowLeft':  if (valid(piece, -1, 0)) piece.x--; break;
-    case 'ArrowRight': if (valid(piece,  1, 0)) piece.x++; break;
-    case 'ArrowDown':
-      if (valid(piece, 0, 1)) { piece.y++; score += 1; updateUI(); }
-      else place();
-      break;
-    case 'ArrowUp': {
-      const rot = rotate(piece.matrix);
-      if (valid(piece, 0, 0, rot)) piece.matrix = rot;
-      else if (valid(piece, 1, 0, rot)) { piece.matrix = rot; piece.x++; }
-      else if (valid(piece, -1, 0, rot)) { piece.matrix = rot; piece.x--; }
-      break;
-    }
-    case 'Space': {
-      e.preventDefault();
-      const dy = ghostY() - piece.y;
-      piece.y += dy;
-      score += dy * 2;
-      updateUI();
-      place();
-      break;
-    }
-  }
-  draw();
-});
-
-document.getElementById('start-btn').onclick = startGame;
-
-window.addEventListener('keydown', e => {
-  if (e.code === 'Space' && document.getElementById('overlay').style.display !== 'none') {
-    e.preventDefault();
-    startGame();
-  }
-});
-</script>
+<script src="js/constants.js"></script>
+<script src="js/game.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/render.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>
