@@ -10,6 +10,9 @@ const THEME_COLORS = {
   Minimal: ['#aaaaaa', '#777777', '#999999', '#cccccc', '#888888', '#bbbbbb', '#666666'],
 };
 
+// Drop interval in ms per level (index 0=Lv1 … index 18=Lv19=20G)
+const GRAVITY_MS = [1000, 800, 650, 520, 410, 320, 245, 185, 135, 95, 65, 40, 25, 15, 8, 5, 3, 1, 0];
+
 const PIECES = [
   null,
   [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]], // I

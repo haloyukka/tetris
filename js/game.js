@@ -14,10 +14,17 @@ const state = {
   gameOver:     false,
   paused:       false,
   settingsOpen: false,
-  animId:       null,
-  lastTime:     0,
-  dropInterval: 1000,
+  animId:           null,
+  lastTime:         0,
+  isLocking:        false,
+  lockTimer:        0,
+  lineClearPending: false,
+  lineClearTimer:   0,
 };
+
+function gravity() {
+  return GRAVITY_MS[Math.min(state.level - 1, GRAVITY_MS.length - 1)];
+}
 
 function newBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -69,9 +76,19 @@ function ghostY() {
   return state.piece.y + dy;
 }
 
+function spawnNext() {
+  state.piece     = state.nextPiece;
+  state.nextPiece = randomPiece();
+  state.canHold   = true;
+  state.isLocking = false;
+  if (!valid(state.piece)) { state.gameOver = true; return; }
+  if (gravity() === 0) while (valid(state.piece, 0, 1)) state.piece.y++;
+}
+
 function holdPiece() {
   if (!state.canHold) return;
-  state.canHold = false;
+  state.canHold   = false;
+  state.isLocking = false;
   if (state.heldType === null) {
     state.heldType  = state.piece.type;
     state.piece     = state.nextPiece;
@@ -81,7 +98,8 @@ function holdPiece() {
     state.heldType = state.piece.type;
     state.piece    = makePiece(prev);
   }
-  if (!valid(state.piece)) state.gameOver = true;
+  if (!valid(state.piece)) { state.gameOver = true; return; }
+  if (gravity() === 0) while (valid(state.piece, 0, 1)) state.piece.y++;
 }
 
 function clearLines() {
@@ -94,16 +112,17 @@ function clearLines() {
       r++;
     }
   }
-  if (!cleared) return;
+  if (!cleared) { spawnNext(); return; }
   const pts = [0, 100, 300, 500, 800];
   state.score += (pts[cleared] || 800) * state.level;
   state.lines += cleared;
-  state.level        = Math.floor(state.lines / 10) + 1;
-  state.dropInterval = Math.max(100, 1000 - (state.level - 1) * 90);
+  state.level  = Math.floor(state.lines / 10) + 1;
   if (state.score > state.hiScore) {
     state.hiScore = state.score;
     localStorage.setItem('tetris_hi', String(state.hiScore));
   }
+  state.lineClearPending = true;
+  state.lineClearTimer   = performance.now();
 }
 
 function place() {
@@ -112,24 +131,25 @@ function place() {
       if (val) state.board[state.piece.y + r][state.piece.x + c] = state.piece.type;
     })
   );
+  state.piece     = null;
+  state.isLocking = false;
   clearLines();
-  state.canHold   = true;
-  state.piece     = state.nextPiece;
-  state.nextPiece = randomPiece();
-  if (!valid(state.piece)) state.gameOver = true;
 }
 
 function initGame() {
-  state.board        = newBoard();
-  state.piece        = randomPiece();
-  state.nextPiece    = randomPiece();
-  state.heldType     = null;
-  state.canHold      = true;
-  state.score        = 0;
-  state.level        = 1;
-  state.lines        = 0;
-  state.dropInterval = 1000;
-  state.gameOver     = false;
-  state.paused       = false;
-  state.lastTime     = 0;
+  state.board            = newBoard();
+  state.piece            = randomPiece();
+  state.nextPiece        = randomPiece();
+  state.heldType         = null;
+  state.canHold          = true;
+  state.score            = 0;
+  state.level            = 1;
+  state.lines            = 0;
+  state.gameOver         = false;
+  state.paused           = false;
+  state.lastTime         = 0;
+  state.isLocking        = false;
+  state.lockTimer        = 0;
+  state.lineClearPending = false;
+  state.lineClearTimer   = 0;
 }
